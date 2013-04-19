@@ -4,25 +4,29 @@ require 'uri'
 require 'thread'
 require 'hmac-sha1'
 require 'json'
+require 'open-uri'
+require 'net/https'
+require 'openssl'
 
-module DOL
-    API_URL = 'V1'
+module GOV
+  
+   
     API_VALID_ARGUMENTS = %w[top skip select orderby filter]
     
     # This class handles storing the host, API key, and SharedSecret for your
     # DataRequest objects.  A DataContext is valid if it has values for host, key, and secret.
     class DataContext
-        attr_accessor :host, :key, :secret, :url
         
-        def initialize host, key, secret
-            @host, @key, @secret = host, key, secret
-            @url = API_URL
-        end
-        
-        def valid?
-            !!(@host and @key and @secret and @url)
-        end
-    end
+        attr_accessor :host, :key, :secret, :login, :data, :uri
+          
+        def initialize host, key, secret, login, data,  uri
+           @host, @key, @secret, @login, @data, @url = host, key, secret, login, data, uri
+           
+             
+        end 
+       
+      
+   end
     
     # This class handles requesting data using the API.
     # All DataRequest objects must be initialized with a DataContext
@@ -35,6 +39,10 @@ module DOL
             @context = context
             @mutex = Mutex.new
             @active_requests = []
+            
+            
+          
+           
         end
         
         # This method consturcts and submits the data request.
@@ -44,17 +52,16 @@ module DOL
         # that all requests have processed after submitting a request.
         # You can make multiple requests with #call_api from a single DataRequest object,
         # and #wait_until_finished wll correctly wait for all of them.
+        
+        
         def call_api method, arguments = {}, &block
             # Ensures only a valid DataContext is used
+          
             unless @context.is_a? DataContext
                 block.call nil, 'A context object was not provided.'
                 return
             end
-            
-            unless @context.valid?
-                block.call nil, 'A valid context object was not provided.'
-                return
-            end
+         
             
             # Ensures only valid arguments are used
             query = []
@@ -67,26 +74,35 @@ module DOL
             end
             
             # Generates timestamp and url
-            timestamp = DOL.timestamp
-            url = URI.parse ["#{@context.host}/#{@context.url}/#{method}", query.join('&')].join '?'
+            timestamp = GOV.timestamp
             
+            url = URI.parse ["#{@context.host}/#{@context.url}/#{method}", query.join('&')].join '?'
+                  
             # Creates a new thread, creates an authenticaed request, and requests data from the host
             @mutex.synchronize do
                 @active_requests << Thread.new do
                     request = Net::HTTP::Get.new [url.path, url.query].join '?'
                     request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
                     request.add_field 'Accept', 'application/json'
+                    
+                   
+                    
                     result = Net::HTTP.start url.host, url.port do |http|
                         http.request request
+                        
+                        
                     end
+                    
+                   
+                    
                     
                     if result.is_a? Net::HTTPSuccess
                       
                       #Cleanup jsonresult.
                       result = result.body.gsub(/\\+"/, '"')
-                      result = result.gsub /\\+n/, ""
-                      result = result.gsub /\"\"\{/, "{"
-                      result = result.gsub /}\"\"/, "}"
+                      result = result.gsub(/\\+n/, "")
+                      result = result.gsub(/\"\"\{/, "{")
+                      result = result.gsub(/}\"\"/, "}")
 
                       result = JSON.parse(result)['d']
                       
@@ -106,6 +122,65 @@ module DOL
                 end
             end
         end
+        
+     def call_ext_api
+            # Ensures only a valid DataContext is used
+            unless @context.is_a? DataContext
+                block.call nil, 'A context object was not provided.'
+                return
+            end
+            
+         
+            # Generates timestamp and url
+            
+        if((!@context.host.empty?) && (!@context.key.empty?) && (@context.login.empty?) && (!@context.data.empty?))
+          
+             dataurl = "#{@context.host}#{@context.key}#{@context.data}"
+             
+             print " This is the data url call for the apikey and host call: #{dataurl}"
+              
+         end 
+         
+       if ((!@context.host.empty?) && (@context.key.empty?) && (@context.login.empty?))  
+         
+           if @context.data.empty? 
+           
+                 dataurl = "#{@context.host}"
+                 
+                  print " This is the data url call for the single host data call: #{dataurl}"
+             
+              
+            else 
+                
+                 dataurl = "#{@context.host}#{@context.data}"
+                 
+                  print " This is the data url call for the host and data call: #{dataurl}"
+                  
+          
+          end 
+          
+          
+       end
+       
+       if ((!@context.host.empty?) && (!@context.key.empty?) && (!@context.login.empty?) && (!@context.data.empty?)) 
+            
+           dataurl = "#{@context.host}#{@context.login}#{@context.key}#{@context.data}"
+          print " This is the data url call for the host, login, key  and data call: #{dataurl}"
+        
+       end 
+       
+     
+unless dataurl.empty? 
+          
+      res = ""
+           open("#{dataurl}", :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE).each_line   { |f| res += f 
+            }  
+           
+         return res  
+  
+      end
+ end    
+     
         
         # Halts program until all ongoing requests sent by this DataRequest finish
         def wait_until_finished
@@ -127,10 +202,11 @@ module DOL
     end
 end
 
+
 class String
     # converts date strings provided by the API (of the format /Date(milliseconds-since-Epoch)/) into Ruby Time objects
     def to_api_date
-        if match /\A\/Date\((\d+)\)\/\Z/
+        if match(/\A\/Date\((\d+)\)\/\Z/)
             Time.at $1.to_i / 1000
         else
             raise TypeError, "Not a valid date format"
