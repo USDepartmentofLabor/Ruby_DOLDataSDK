@@ -7,6 +7,8 @@ require 'json'
 require 'open-uri'
 require 'net/https'
 require 'openssl'
+require 'always_verify_ssl_certificates'
+require 'cgi'
 
 module GOV
   
@@ -17,10 +19,10 @@ module GOV
     # DataRequest objects.  A DataContext is valid if it has values for host, key, and secret.
     class DataContext
         
-        attr_accessor :host, :key, :secret, :login, :data, :uri
+        attr_accessor :host, :key, :secret, :data, :uri
           
-        def initialize host, key, secret, login, data,  uri
-           @host, @key, @secret, @login, @data, @url = host, key, secret, login, data, uri
+        def initialize host, key, secret, data,  uri
+           @host, @key, @secret, @data, @uri = host, key, secret, data, uri
            
              
         end 
@@ -56,7 +58,6 @@ module GOV
         
         def call_api method, arguments = {}, &block
             # Ensures only a valid DataContext is used
-          
             unless @context.is_a? DataContext
                 block.call nil, 'A context object was not provided.'
                 return
@@ -69,52 +70,101 @@ module GOV
                 if API_VALID_ARGUMENTS.member? key.to_s
                     query << "$#{key}=#{URI.escape value.to_s}"
                 else
-                   query << "#{key}=#{URI.escape value.to_s}"
+                	if context.host == "http://go.usa.gov"
+                		### See comment in go.usa.gov section below
+                		query << "#{key}=#{CGI::escape(value.to_s)}"
+                	else
+	                   query << "#{key}=#{URI.escape value.to_s}"
+	                end
                 end
             end
             
             # Generates timestamp and url
             timestamp = GOV.timestamp
             
-            url = URI.parse ["#{@context.host}/#{@context.url}/#{method}", query.join('&')].join '?'
-                  
+            # By default, these calls do not require SSL
+            sdkUseSSL = FALSE
+			
+                        
             # Creates a new thread, creates an authenticaed request, and requests data from the host
             @mutex.synchronize do
                 @active_requests << Thread.new do
-                    request = Net::HTTP::Get.new [url.path, url.query].join '?'
-                    request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
-                    request.add_field 'Accept', 'application/json'
-                    
-                   
-                    
-                    result = Net::HTTP.start url.host, url.port do |http|
-                        http.request request
+                	#TODO: Finish the conditional formatting below
+                	if context.host == "http://api.dol.gov"
+                		# For DOL V1
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}", query.join('&')].join '?'
+    	            elsif context.host == "http://go.usa.gov"
+    	            	# For go.USA.gov
+    	            	### THIS SHOULD USE SSL.  Have not been able to make it work with SSL.  Strangely, for now, works w/o it.
+    	            	sdkUseSSL = FALSE
+			            login = query.at(0)
+			            longURL = query.at(1)
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?#{login}&apiKey=#{@context.key}&#{longURL}"].join '&'
+						#url.port = 443
+    	            elsif context.host == "http://www.ncdc.noaa.gov"
+    	            	# NOAA National Climatic Data Center
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?token=#{@context.key}", query.join('&')].join '&'
+    	            elsif ((context.host == "http://api.eia.gov") || (context.host == "http://developer.nrel.gov") || (context.host == "http://api.stlouisfed.org") || (context.host == "http://healthfinder.gov"))
+						# Energy EIA API (beta)
+             			# Energy NREL
+             			# St. Louis Fed
+             			# NIH Healthfinder
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?api_key=#{@context.key}", query.join('&')].join '&'
+	         		elsif ((context.host == "http://api.census.gov") || (context.host == "http://pillbox.nlm.nih.gov"))
+             			# Census.gov
+             			# NIH Pillbox
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?key=#{@context.key}", query.join('&')].join '&'
+             		else
+####### RETEST #######
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}", query.join('&')].join '?'
+					end
+
+
+						request = Net::HTTP::Get.new [url.path, url.query].join '?'
+					
+                		if context.host == "http://api.dol.gov"
+    	                	request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
+						end					
+
+        	            request.add_field 'Accept', 'application/json'
+						                    
+					 
+            	        result = Net::HTTP.start url.host, url.port do |http|
+                	        http.request request
                         
-                        
-                    end
-                    
+                    	end
                    
                     
                     
                     if result.is_a? Net::HTTPSuccess
-                      
+                      rawresult = result.body
                       #Cleanup jsonresult.
                       result = result.body.gsub(/\\+"/, '"')
                       result = result.gsub(/\\+n/, "")
                       result = result.gsub(/\"\"\{/, "{")
                       result = result.gsub(/}\"\"/, "}")
-
-                      result = JSON.parse(result)['d']
+						begin
+							result = JSON.parse(result)['d']
+						rescue
+							print "parse attempt failed"
+						end
                       
-                      if (result.include?'results')
-                          result = result['results'] if result.is_a? Hash
-                      end
-
-                      block.call result, nil
                       
+                      # If the JSON is not parsed successfully, we need to avoid an error regarding result.include?.  In this case, we return the raw API output.  Either the parser above needs work or the JSON results need love.  
+                      # This may be an area that needs future improvements
+                      if !result.nil?
+	                      if (result.include?'results')
+    	                      result = result['results'] if result.is_a? Hash
+        	              end
+                      	block.call result, nil
+					  else
+#					  print rawresult
+					  	block.call rawresult, nil
+					  end                      
                     else
-                        block.call nil, "Error: #{result.message}"
+                        block.call nil, "Error Will Robinson: #{result.message}"
                     end
+
                     
                     @mutex.synchronize do
                         @active_requests.delete Thread.current
@@ -122,65 +172,7 @@ module GOV
                 end
             end
         end
-        
-     def call_ext_api
-            # Ensures only a valid DataContext is used
-            unless @context.is_a? DataContext
-                block.call nil, 'A context object was not provided.'
-                return
-            end
-            
-         
-            # Generates timestamp and url
-            
-        if((!@context.host.empty?) && (!@context.key.empty?) && (@context.login.empty?) && (!@context.data.empty?))
-          
-             dataurl = "#{@context.host}#{@context.key}#{@context.data}"
              
-             print " This is the data url call for the apikey and host call: #{dataurl}"
-              
-         end 
-         
-       if ((!@context.host.empty?) && (@context.key.empty?) && (@context.login.empty?))  
-         
-           if @context.data.empty? 
-           
-                 dataurl = "#{@context.host}"
-                 
-                  print " This is the data url call for the single host data call: #{dataurl}"
-             
-              
-            else 
-                
-                 dataurl = "#{@context.host}#{@context.data}"
-                 
-                  print " This is the data url call for the host and data call: #{dataurl}"
-                  
-          
-          end 
-          
-          
-       end
-       
-       if ((!@context.host.empty?) && (!@context.key.empty?) && (!@context.login.empty?) && (!@context.data.empty?)) 
-            
-           dataurl = "#{@context.host}#{@context.login}#{@context.key}#{@context.data}"
-          print " This is the data url call for the host, login, key  and data call: #{dataurl}"
-        
-       end 
-       
-     
-unless dataurl.empty? 
-          
-      res = ""
-           open("#{dataurl}", :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE).each_line   { |f| res += f 
-            }  
-           
-         return res  
-  
-      end
- end    
-     
         
         # Halts program until all ongoing requests sent by this DataRequest finish
         def wait_until_finished
