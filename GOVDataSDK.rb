@@ -172,10 +172,7 @@ module GOV
                 end
             end
         end
-        
-        # THE METHOD BELOW WILL BE REMOVED
-        # NOT DELETING CODE UNTIL I'M SURE I DON'T NEED ANY OF IT
-     
+             
         
         # Halts program until all ongoing requests sent by this DataRequest finish
         def wait_until_finished
