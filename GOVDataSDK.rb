@@ -2,7 +2,7 @@ require 'rubygems'
 require 'net/http'
 require 'uri'
 require 'thread'
-require 'hmac-sha1'
+#require 'hmac-sha1'
 require 'json'
 require 'open-uri'
 require 'net/https'
@@ -19,10 +19,10 @@ module GOV
     # DataRequest objects.  A DataContext is valid if it has values for host, key, and secret.
     class DataContext
         
-        attr_accessor :host, :key, :secret, :data, :uri
+        attr_accessor :host, :key, :data, :uri
           
-        def initialize host, key, secret, data,  uri
-           @host, @key, @secret, @data, @uri = host, key, secret, data, uri
+        def initialize host, key, data,  uri
+           @host, @key, @data, @uri = host, key, data, uri
            
              
         end 
@@ -32,7 +32,7 @@ module GOV
     
     # This class handles requesting data using the API.
     # All DataRequest objects must be initialized with a DataContext
-    # that provides the DatRequest with a host, API key and SharedSecret.
+    # that provides the DatRequest with a host, and API key.
     # After generating a request, call #call_api to submit it.
     class DataRequest
         attr_accessor :context
@@ -92,7 +92,7 @@ module GOV
                 	#TODO: Finish the conditional formatting below
                 	if context.host == "http://api.dol.gov"
                 		# For DOL V1
-			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}", query.join('&')].join '?'
+			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?KEY={@context.key}", query.join('&')].join '?'
     	            elsif context.host == "http://go.usa.gov"
     	            	# For go.USA.gov
     	            	### THIS SHOULD USE SSL.  Have not been able to make it work with SSL.  Strangely, for now, works w/o it.
@@ -122,9 +122,10 @@ module GOV
 
 						request = Net::HTTP::Get.new [url.path, url.query].join '?'
 					
-                		if context.host == "http://api.dol.gov"
-    	                	request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
-						end					
+						# commented code below should no longer be needed since DOL simplified its API call syntax
+                		#if context.host == "http://api.dol.gov"
+    	                #	request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
+						#end					
 
         	            request.add_field 'Accept', 'application/json'
 						                    
@@ -181,11 +182,12 @@ module GOV
             end
         end
         
-        private
+		# commented code below should no longer be needed since DOL simplified its API call syntax
+        #private
         # Generates a signature using your SharedSecret and the request path
-        def signature timestamp, url
-            HMAC::SHA1.hexdigest @context.secret, [url.path, url.query + "&Timestamp=#{timestamp}&ApiKey=#{@context.key}"].join('?')
-        end
+        #def signature timestamp, url
+        #    HMAC::SHA1.hexdigest @context.secret, [url.path, url.query + "&Timestamp=#{timestamp}&ApiKey=#{@context.key}"].join('?')
+        #end
     end
     
     module_function
