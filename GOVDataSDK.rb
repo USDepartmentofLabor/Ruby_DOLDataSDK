@@ -92,7 +92,7 @@ module GOV
                 	#TODO: Finish the conditional formatting below
                 	if context.host == "http://api.dol.gov"
                 		# For DOL V1
-			            url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?KEY={@context.key}", query.join('&')].join '?'
+                    url = URI.parse ["#{@context.host}/#{@context.uri}/#{method}?KEY=#{@context.key}", query.join('&')].join '&'
     	            elsif context.host == "http://go.usa.gov"
     	            	# For go.USA.gov
     	            	### THIS SHOULD USE SSL.  Have not been able to make it work with SSL.  Strangely, for now, works w/o it.
