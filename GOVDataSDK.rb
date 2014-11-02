@@ -21,7 +21,7 @@ module GOV
         
         attr_accessor :host, :key, :data, :uri
           
-        def initialize host, key, data,  uri
+        def initialize(host, key, data,  uri)
            @host, @key, @data, @uri = host, key, data, uri
            
              
@@ -37,7 +37,7 @@ module GOV
     class DataRequest
         attr_accessor :context
         
-        def initialize context
+        def initialize(context)
             @context = context
             @mutex = Mutex.new
             @active_requests = []
@@ -56,7 +56,7 @@ module GOV
         # and #wait_until_finished wll correctly wait for all of them.
         
         
-        def call_api method, arguments = {}, &block
+        def call_api(method, arguments = {}, &block)
             # Ensures only a valid DataContext is used
             unless @context.is_a? DataContext
                 block.call nil, 'A context object was not provided.'
