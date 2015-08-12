@@ -9,6 +9,7 @@ require 'net/https'
 require 'openssl'
 #require 'always_verify_ssl_certificates'
 require 'cgi'
+require 'nokogiri'
 
 module GOV
   
@@ -138,6 +139,11 @@ module GOV
             result = Net::HTTP.start url.host, url.port, :use_ssl => url.scheme == 'https' do |http|
               http.request request
             end
+          elsif context.host == GOV::URL_API_V1
+             request = Net::HTTP::Get.new [url.path, url.query].join '?'
+             result = Net::HTTP.start url.host, url.port do |http|
+               http.request request
+             end
           else
             request = Net::HTTP::Get.new [url.path, url.query].join '?'
             request.add_field 'Accept', 'application/json'
@@ -151,7 +157,15 @@ module GOV
           # commented code below should no longer be needed since DOL simplified its API call syntax
           #if context.host == "http://api.dol.gov"
           #	request.add_field 'Authorization', "Timestamp=#{timestamp}&ApiKey=#{@context.key}&Signature=#{signature timestamp, url}"
-          #end			
+          #end	
+          
+          if context.host == GOV::URL_API_V1
+            rawresult = result.body
+            result = Nokogiri::XML(rawresult)
+            block.call result, nil
+
+        else
+          		
                     
                     
           if result.is_a? Net::HTTPSuccess
@@ -170,6 +184,7 @@ module GOV
               result = result.gsub(/\\+n/, "")
               result = result.gsub(/\"\"\{/, "{")
               result = result.gsub(/}\"\"/, "}")
+              print result
               begin
                 result = JSON.parse(result)['d']
               rescue
@@ -192,6 +207,7 @@ module GOV
           else
             block.call nil, "Error Will Robinson: #{result.message}"
           end
+        end
 
                     
           @mutex.synchronize do
