@@ -6,7 +6,7 @@ Ruby SDK to ease access to DOL's and other federal agencies' APIs. For a list of
 ##Changelog
 
 
-* v1.2.0 - Changed to a Nokogiri XML return type for APIv1 as a workaround due to an issue where some of the JSON returned from the v1 APIs contain unescaped double-quotes. For instructions on how to use the Ruby Nokogiri XML object with this SDK, please refer to the updated [Ruby Sample App](http://usdepartmentoflabor.github.io/Ruby-Sample-App/)
+* v1.2.0 - Changed to a Nokogiri XML return type for DOL APIv1 as a workaround due to an issue where some of the JSON returned from the v1 APIs contain unescaped double-quotes. For instructions on how to use the Ruby Nokogiri XML object with this SDK, please refer to the updated [Ruby Sample App](http://usdepartmentoflabor.github.io/Ruby-Sample-App/)
 
 
 * v1.1.0 Added Support for API v2 (Quarry)
