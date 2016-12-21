@@ -1,11 +1,11 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'dol_data/version'
+require 'doldata_sdk/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'ruby_doldata_sdk'
-  spec.version       = DolData::SDK::VERSION
+  spec.version       = DolDataSDK::VERSION
   spec.authors       = ['Giridhar Bandi']
   spec.email         = ['giridhar dot bandi dot r at dol dot gov']
 
