@@ -1,46 +1,45 @@
 module DolDataSDK
 	module V1
 		module Statistics
-			extend DolDataSDK::Utilities
 
-			def self.oui_initial_claims(dataset, *args)
-				Client.fetch("Statistics/OUI_InitialClaims", dataset, args)
+			def self.oui_initial_claims(tablename, *args)
+				Client.fetch("Statistics/OUI_InitialClaims", tablename, args)
 			end
 
-			def self.pwsd(dataset, *args)
-				Client.fetch("Statistics/PWSD",dataset,args)
+			def self.pwsd(tablename, *args)
+				Client.fetch("Statistics/PWSD",tablename,args)
 			end
 
-			def self.cew(dataset, *args)
-				Client.fetch("Statistics/CEW", dataset, args)
+			def self.cew(tablename, *args)
+				Client.fetch("Statistics/CEW", tablename, args)
 			end
 
-			def self.oes(dataset, *args)
-				Client.fetch("Statistics/OES", dataset, args)
+			def self.oes(tablename, *args)
+				Client.fetch("Statistics/OES", tablename, args)
 			end
 
-			def self.cps(dataset, *args)
-				Client.fetch("Statistics/CPS", dataset, args)
+			def self.cps(tablename, *args)
+				Client.fetch("Statistics/CPS", tablename, args)
 			end
 
-			def self.ces(dataset, *args)
-				Client.fetch("Statistics/CES", dataset, args)
+			def self.ces(tablename, *args)
+				Client.fetch("Statistics/CES", tablename, args)
 			end
 
-			def self.cpi(dataset, *args)
-				Client.fetch("Statistics/CPI", dataset, args)
+			def self.cpi(tablename, *args)
+				Client.fetch("Statistics/CPI", tablename, args)
 			end
 
-			def self.wia(dataset, *args)
-				Client.fetch("Statistics/WIA", dataset, args)
+			def self.wia(tablename, *args)
+				Client.fetch("Statistics/WIA", tablename, args)
 			end
 
-			def self.oes2010(dataset, *args)
-				Client.fetch("Statistics/OES2010", dataset, args)
+			def self.oes2010(tablename, *args)
+				Client.fetch("Statistics/OES2010", tablename, args)
 			end
 
-			def self.bls_numbers(dataset, *args)
-				Client.fetch("Statistics/BLS_Numbers", dataset, args)
+			def self.bls_numbers(tablename, *args)
+				Client.fetch("Statistics/BLS_Numbers", tablename, args)
 			end
 
 		end

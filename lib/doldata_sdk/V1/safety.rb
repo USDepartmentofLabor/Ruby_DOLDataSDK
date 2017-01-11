@@ -1,13 +1,13 @@
 module DolDataSDK
   module V1
-    module HealthSafety
+    module Safety
       extend DolDataSDK::Utilities
 
       def self.agencies(*args)
         args.each do |name|
           instance_eval <<-DOLRUBY
-            def #{name}(dataset,*arguments)
-              Client.fetch("Safety/#{capitalized_name(name)}",dataset,arguments)
+            def #{name}(tablename,*arguments)
+              Client.fetch("Safety/#{capitalized_name(name)}",tablename,arguments)
             end
           DOLRUBY
         end
